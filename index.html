@@ -55,7 +55,7 @@
     <option value="webp">WEBP</option>
     <option value="png">PNG</option>
     <option value="jpeg">JPG</option>
-    <option value="avif">AVIF</option>
+    <option value="avif">AVIF (limited support)</option>
   </select>
 
   <div id="drop-zone">Drag & Drop Images Here or Click to Select</div>
@@ -114,6 +114,8 @@
           const baseName = file.name.replace(/\.[^/.]+$/, '');
           const uniqueName = `${baseName}-unique.${extension}`;
 
+          const quality = (format === 'webp' || format === 'jpeg' || format === 'avif') ? 0.75 : 1.0;
+
           canvas.toBlob(blob => {
             if (!blob) {
               alert('This format is not supported in your browser.');
@@ -135,7 +137,7 @@
             if (generatedFiles.length > 1) {
               downloadZipBtn.style.display = 'inline-block';
             }
-          }, format, 0.95);
+          }, format, quality);
         };
         img.src = e.target.result;
       };
