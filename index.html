@@ -98,6 +98,18 @@
       files.forEach(file => uniquifyImage(file));
     });
 
+    function dataURLtoBlob(dataurl) {
+      const arr = dataurl.split(',');
+      const mime = arr[0].match(/:(.*?);/)[1];
+      const bstr = atob(arr[1]);
+      let n = bstr.length;
+      const u8arr = new Uint8Array(n);
+      while (n--) {
+        u8arr[n] = bstr.charCodeAt(n);
+      }
+      return new Blob([u8arr], { type: mime });
+    }
+
     function uniquifyImage(file) {
       const reader = new FileReader();
       reader.onload = e => {
@@ -112,15 +124,25 @@
           const format = formatSelect.value;
           const extension = format === 'jpeg' ? 'jpg' : format;
           const baseName = file.name.replace(/\.[^/.]+$/, '');
-          const uniqueName = `${baseName}-unique.${extension}`;
-
+          const uniqueName = `${baseName}.${extension}`;
           const quality = (format === 'webp' || format === 'jpeg' || format === 'avif') ? 0.75 : 1.0;
 
-          canvas.toBlob(blob => {
-            if (!blob) {
-              alert('This format is not supported in your browser.');
-              return;
-            }
+          let blob;
+          if (format === 'webp' || format === 'jpeg' || format === 'avif') {
+            const dataURL = canvas.toDataURL(`image/${format}`, quality);
+            blob = dataURLtoBlob(dataURL);
+            finalize(blob);
+          } else {
+            canvas.toBlob(b => {
+              if (!b) {
+                alert('This format is not supported in your browser.');
+                return;
+              }
+              finalize(b);
+            }, format);
+          }
+
+          function finalize(blob) {
             const link = document.createElement('a');
             link.download = uniqueName;
             link.href = URL.createObjectURL(blob);
@@ -137,7 +159,7 @@
             if (generatedFiles.length > 1) {
               downloadZipBtn.style.display = 'inline-block';
             }
-          }, format, quality);
+          }
         };
         img.src = e.target.result;
       };
