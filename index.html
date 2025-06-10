@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Image Uniquifier</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 20px;
+    }
+    #drop-zone {
+      border: 3px dashed #ccc;
+      padding: 50px;
+      margin: 20px auto;
+      width: 80%;
+      max-width: 600px;
+      border-radius: 12px;
+      background: #f9f9f9;
+      cursor: pointer;
+    }
+    #drop-zone.hover {
+      border-color: #333;
+      background-color: #eee;
+    }
+    ol {
+      padding-left: 40px;
+      text-align: left;
+      display: inline-block;
+    }
+    .download-link {
+      display: block;
+      margin-top: 5px;
+    }
+    #format-select {
+      margin-bottom: 20px;
+      font-size: 1rem;
+      padding: 5px;
+    }
+    #download-zip {
+      margin-bottom: 10px;
+      padding: 5px 10px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <h1>Image Uniquifier</h1>
+  <p>Drop images below or click the area to select from your device.</p>
+  <label for="format-select">Choose output format:</label>
+  <select id="format-select">
+    <option value="webp">WEBP</option>
+    <option value="png">PNG</option>
+    <option value="jpeg">JPG</option>
+    <option value="avif">AVIF</option>
+  </select>
+
+  <div id="drop-zone">Drag & Drop Images Here or Click to Select</div>
+  <input type="file" id="file-input" multiple accept="image/*" style="display:none;">
+  <div>
+    <button id="download-zip">Download All as ZIP</button>
+  </div>
+  <ol id="downloads"></ol>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js"></script>
+  <script>
+    const dropZone = document.getElementById('drop-zone');
+    const fileInput = document.getElementById('file-input');
+    const downloads = document.getElementById('downloads');
+    const formatSelect = document.getElementById('format-select');
+    const downloadZipBtn = document.getElementById('download-zip');
+    const zip = new JSZip();
+    const generatedFiles = [];
+
+    dropZone.addEventListener('click', () => fileInput.click());
+
+    fileInput.addEventListener('change', () => {
+      const files = Array.from(fileInput.files);
+      files.forEach(file => uniquifyImage(file));
+    });
+
+    dropZone.addEventListener('dragover', e => {
+      e.preventDefault();
+      dropZone.classList.add('hover');
+    });
+
+    dropZone.addEventListener('dragleave', () => {
+      dropZone.classList.remove('hover');
+    });
+
+    dropZone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropZone.classList.remove('hover');
+      const files = Array.from(e.dataTransfer.files);
+      files.forEach(file => uniquifyImage(file));
+    });
+
+    function uniquifyImage(file) {
+      const reader = new FileReader();
+      reader.onload = e => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          canvas.width = img.width;
+          canvas.height = img.height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0);
+
+          const format = formatSelect.value;
+          const extension = format === 'jpeg' ? 'jpg' : format;
+          const baseName = file.name.replace(/\.[^/.]+$/, '');
+          const uniqueName = `${baseName}-unique.${extension}`;
+
+          canvas.toBlob(blob => {
+            if (!blob) {
+              alert('This format is not supported in your browser.');
+              return;
+            }
+            const link = document.createElement('a');
+            link.download = uniqueName;
+            link.href = URL.createObjectURL(blob);
+            link.className = 'download-link';
+            link.textContent = 'Download ' + uniqueName;
+
+            const listItem = document.createElement('li');
+            listItem.appendChild(link);
+            downloads.appendChild(listItem);
+
+            zip.file(uniqueName, blob);
+            generatedFiles.push(uniqueName);
+
+            if (generatedFiles.length > 1) {
+              downloadZipBtn.style.display = 'inline-block';
+            }
+          }, format, 0.95);
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    downloadZipBtn.addEventListener('click', () => {
+      if (generatedFiles.length === 0) {
+        alert('No files to zip yet. Please process some images first.');
+        return;
+      }
+      zip.generateAsync({ type: 'blob' }).then(content => {
+        const zipLink = document.createElement('a');
+        zipLink.href = URL.createObjectURL(content);
+        zipLink.download = 'unique-images.zip';
+        zipLink.click();
+      });
+    });
+  </script>
+</body>
+</html>
